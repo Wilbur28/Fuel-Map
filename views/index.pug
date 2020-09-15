@@ -1,0 +1,336 @@
+extends layout
+
+block content
+  div(class="container-fluid")
+    div(class="row")
+    div(class="row")
+      div(class="sidebar pad2 col-sm-3")
+        div
+          h4 Fuel Type Filter
+          div(class="text-center")
+            select(class="fuelType-select" id="fuelType")
+              option(value="0" selected="selected") Unleaded
+              option(value="1") Diesel
+              option(value="2") LPG
+              option(value="3") Premium Unleaded 95
+              option(value="4") ULSD
+              option(value="5") Premium Unleaded 98
+              option(value="6") LRP
+              option(value="7") e10
+              option(value="8") Premium e5
+              option(value="9") Premium Diesel
+              option(value="10") Bio-Diesel 20
+              option(value="11") e85
+              option(value="12") OPAL
+              option(value="13") Compressed natural gas
+              option(value="14") Liquefied natural gas
+              option(value="15") e10/Unleaded
+              option(value="16") Diesel/Premium Diesel
+          br
+          div(class="heading")
+            h4 Fuel Stations
+          div(id='listings' class='listings')
+      div(id="map" class="pad2 col-lg-9 map")
+  script.
+    const stations = !{jsStringify(data)};
+    const test = !{jsStringify(data)};
+
+  //- Mapbox Script
+  script.
+    mapboxgl.accessToken = 'pk.eyJ1Ijoid2lsYnVyMjgiLCJhIjoiY2tlYjV4aHdwMDVwaDJ4b2FhZHFyaGw4ciJ9.jm7Sgr3xocwXVx18R74tXQ';
+
+    //- Creation of Map
+    var map = new mapboxgl.Map({
+      container: 'map',
+      style: 'mapbox://styles/mapbox/streets-v11',
+      center: [153.025, -27.469],
+      zoom: 12
+    });
+    console.log(stations);
+    map.on('load', function(e) {
+      map.addSource("places", {
+        "type": "geojson",
+        "data": stations
+      });
+
+      buildLocationList(stations);
+      addMarkers();
+    });
+
+    //- Geolocation Setup
+    var geolocate = new mapboxgl.GeolocateControl({
+      positionOptions: {
+      enableHighAccuracy: true
+      },
+    });
+
+    //- Adding Map Controls
+    map.addControl(geolocate);
+
+    map.addControl(new mapboxgl.NavigationControl());
+
+    //- Geocoder Setup
+    var geocoder = new MapboxGeocoder({
+      accessToken: mapboxgl.accessToken,
+      language: 'en-AU',
+      mapboxgl: mapboxgl,
+      marker: true,
+      bbox: [138.000, -29.500, 155.000, -9.000]
+    });
+
+    //- Adding Geocoder to the Map
+    map.addControl(geocoder, 'top-left');
+
+    //- Geocoder Trigger from using Geolocation
+    geolocate.on('geolocate', function(position) {
+      const latitude = position.coords.latitude;
+      const longitude = position.coords.longitude;
+      var searchResult = {
+        coordinates: [longitude, latitude]
+      };
+      
+      //- Uses Turf to Calculate Distances
+      var options = { units: 'kilometers' };
+      stations.features.forEach(function(station) {
+        Object.defineProperty(station.properties, 'distance', {
+          value: turf.distance(searchResult, station.geometry, options),
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+      });
+
+      //- Compares Turf Distances
+      stations.features.sort(function(a, b) {
+        if (a.properties.distance > b.properties.distance) {
+          return 1;
+        }
+        if (a.properties.distance < b.properties.distance) {
+          return -1;
+        }
+        return 0;
+      });
+
+      //- Builds Fuel Station List in Order
+      var listings = document.getElementById('listings');
+      while (listings.firstChild) {
+        listings.removeChild(listings.firstChild);
+      }
+      buildLocationList(stations);
+
+      //- Adds a Box around the Fuel Stations and Location to View Both
+      var bbox = getBbox(stations, 0, searchResult);
+      map.fitBounds(bbox, {
+        padding: 100
+      });
+
+      //- Creates Popups
+      createPopUp(stations.features[0]);
+
+      var activeListing = document.getElementById('listing-' + stations.features[0].properties.S);
+      activeListing.classList.add('active');
+
+      //- Creates the Boxes
+      function getBbox(sortedStations, stationIdentifier, searchResult) {
+        var lats = [
+          sortedStations.features[stationIdentifier].geometry.coordinates[1],
+          searchResult.coordinates[1]
+        ];
+        var lons = [
+          sortedStations.features[stationIdentifier].geometry.coordinates[0],
+          searchResult.coordinates[0]
+        ];
+        var sortedLons = lons.sort(function(a,b) {
+            if (a > b) { return 1; }
+            if (a.distance < b.distance) { return -1; }
+            return 0;
+          });
+        var sortedLats = lats.sort(function(a,b) {
+            if (a > b) { return 1; }
+            if (a.distance < b.distance) { return -1; }
+            return 0;
+          });
+        return [
+          [sortedLons[0], sortedLats[0]],
+          [sortedLons[1], sortedLats[1]]
+        ];
+      }
+    });
+
+    //- Same as Above just for Search Box this Time
+    geocoder.on('result', function(ev) {
+      var searchResult = ev.result.geometry;
+      var options = { units: 'kilometers' };
+      stations.features.forEach(function(station) {
+        Object.defineProperty(station.properties, 'distance', {
+          value: turf.distance(searchResult, station.geometry, options),
+          writable: true,
+          enumerable: true,
+          configurable: true
+        });
+      });
+
+      stations.features.sort(function(a, b) {
+        if (a.properties.distance > b.properties.distance) {
+          return 1;
+        }
+        if (a.properties.distance < b.properties.distance) {
+          return -1;
+        }
+        return 0;
+      });
+
+      var listings = document.getElementById('listings');
+      while (listings.firstChild) {
+        listings.removeChild(listings.firstChild);
+      }
+      buildLocationList(stations);
+
+      var bbox = getBbox(stations, 0, searchResult);
+      map.fitBounds(bbox, {
+        padding: 100
+      });
+
+      createPopUp(stations.features[0]);
+
+      var activeListing = document.getElementById('listing-' + stations.features[0].properties.S);
+      activeListing.classList.add('active');
+
+      function getBbox(sortedStations, stationIdentifier, searchResult) {
+        var lats = [
+          sortedStations.features[stationIdentifier].geometry.coordinates[1],
+          searchResult.coordinates[1]
+        ];
+        var lons = [
+          sortedStations.features[stationIdentifier].geometry.coordinates[0],
+          searchResult.coordinates[0]
+        ];
+        var sortedLons = lons.sort(function(a,b) {
+            if (a > b) { return 1; }
+            if (a.distance < b.distance) { return -1; }
+            return 0;
+          });
+        var sortedLats = lats.sort(function(a,b) {
+            if (a > b) { return 1; }
+            if (a.distance < b.distance) { return -1; }
+            return 0;
+          });
+        return [
+          [sortedLons[0], sortedLats[0]],
+          [sortedLons[1], sortedLats[1]]
+        ];
+      }
+    });
+
+    //- Adds Markers to the Map Baesd on Geolocation
+    function addMarkers() {
+      stations.features.forEach(function(marker) {
+        var el = document.createElement('div');
+        el.id = 'marker-' + marker.properties.S;
+        el.className = 'marker';
+        if (marker.properties.B == 2 || marker.properties.B == 5 || marker.properties.B == 23 || marker.properties.B == 110 || marker.properties.B == 111 || marker.properties.B == 112 || marker.properties.B == 113 || marker.properties.B == 5094) {
+          el.style.backgroundImage = 'url(../images/' + marker.properties.B +'.png)';
+        } else {
+          el.style.backgroundImage = 'url(../images/Generic.png)';
+        } 
+
+        new mapboxgl.Marker(el, { offset: [0, -23] })
+          .setLngLat(marker.geometry.coordinates)
+          .addTo(map);
+
+        //- Icon on click Listener, Creates Popup
+        el.addEventListener('click', function(e) {
+          flyToStation(marker);
+          createPopUp(marker);
+          var activeItem = document.getElementsByClassName('active');
+          e.stopPropagation();
+          if (activeItem[0]) {
+            activeItem[0].classList.remove('active');
+          }
+          var listing = document.getElementById(
+            'listing-' + marker.properties.S
+          );
+          listing.classList.add('active');
+        });
+      });
+    }
+
+    //- Builds the Fuel Station List
+    function buildLocationList(data) {
+      data.features.forEach(function(station, i) {
+        var prop = station.properties;
+
+        var listings = document.getElementById('listings');
+        var listing = listings.appendChild(document.createElement('div'));
+        listing.id = 'listing-' + prop.S;
+        listing.className = 'item';
+
+        var link = listing.appendChild(document.createElement('a'));
+        link.href = '#';
+        link.className = 'title';
+        link.id = 'link-' + prop.S;
+        link.innerHTML = prop.N;
+
+        var details = listing.appendChild(document.createElement('div'));
+        details.innerHTML = prop.A;
+
+        if (prop.distance) {
+          var roundedDistance = Math.round(prop.distance * 100) / 100;
+          details.innerHTML += '<p><strong>' + roundedDistance + ' kilometres away</strong></p>';
+        }
+
+        link.addEventListener('click', function(e) {
+          for (var i = 0; i < data.features.length; i++) {
+            if (this.id === 'link-' + data.features[i].properties.S) {
+              var clickedListing = data.features[i];
+              flyToStation(clickedListing);
+              createPopUp(clickedListing);
+            }
+          }
+          var activeItem = document.getElementsByClassName('active');
+          if (activeItem[0]) {
+            activeItem[0].classList.remove('active');
+          }
+          this.parentNode.classList.add('active');
+        });
+      });
+    }
+
+    //- Moves Map to the Icon Clicked on or Searched
+    function flyToStation(currentFeature) {
+      map.flyTo({
+        center: currentFeature.geometry.coordinates,
+        zoom: 15
+      });
+    }
+
+    //- Create the Popups
+    function createPopUp(currentFeature) {
+      var popUps = document.getElementsByClassName('mapboxgl-popup');
+
+      //- Dropdown Filter
+      var e = document.getElementById("fuelType");
+      var strUser = e.options[e.selectedIndex].value;
+      
+      if (popUps[0]) popUps[0].remove();
+      var popup = new mapboxgl.Popup({ closeOnClick: false })
+        .setLngLat(currentFeature.geometry.coordinates)
+        .setHTML(
+          '<popuph3>' + currentFeature.properties.N + '</popuph3>' +
+            '<popuph4>' +
+            currentFeature.properties.S +
+            '</popuph4>' + 
+            '<popuph4>' +
+            currentFeature.properties.A +
+            '</popuph4>' +
+            '<popuph4>' +
+            currentFeature.properties.fuel[strUser].Name + ': ' +
+            currentFeature.properties.fuel[strUser].Price +
+            '</popuph4>' +
+            '<popuph4>' +
+            'Last Updated: ' +
+            currentFeature.properties.fuel[strUser].TransactionDateUtc +
+            '</popuph4>'
+        )
+        .addTo(map);
+    }

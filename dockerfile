@@ -1,0 +1,10 @@
+FROM node:12
+
+RUN git clone https://github.com/Wilbur28/Fuel-Map.git
+
+WORKDIR cloud_assignment
+
+RUN npm install
+
+EXPOSE 3000
+CMD ["node", "app.js"]
