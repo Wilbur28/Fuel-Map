@@ -2,7 +2,7 @@ FROM node:12
 
 RUN git clone https://github.com/Wilbur28/Fuel-Map.git
 
-WORKDIR cloud_assignment
+WORKDIR Fuel-Map
 
 RUN npm install
 
