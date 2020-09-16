@@ -3,6 +3,7 @@ var router = express.Router();
 var GeoJSON = require('geojson');
 var axios = require("axios");
 var moment = require('moment');
+var lodash = require('lodash');
 const jsStringify = require('js-stringify');
 
 /* API Axios Config */ 
@@ -69,53 +70,28 @@ function sortData() {
   });
 
   Object.keys(site.S).forEach(function (index) {
-    site.S[index].fuel = fuelID.Fuels;
+    site.S[index].fuel = lodash.cloneDeep(fuelID.Fuels);
   });
-  
-  console.log(site.S[0].fuel[0].Price);
-  console.log(site.S[1].fuel[0].Price);
-  site["S"][0].fuel[0].Price = 0;
-  //site["S"][0].fuel[0].Price = 0;
-  console.log(site.S[0].fuel[0].Price);
-  console.log(site.S[1].fuel[0].Price);
 
   Object.keys(prices.SitePrices).forEach(function (priceIndex) {
     Object.keys(site.S).forEach(function (siteIndex) {
       if (prices.SitePrices[priceIndex].SiteId == site.S[siteIndex].S) {
         Object.keys(fuelID.Fuels).forEach(function (fuelIndex) {
           if (prices.SitePrices[priceIndex].FuelId == site.S[siteIndex].fuel[fuelIndex].FuelId) {
-            //if (site.S[siteIndex].S == 61290151) {
-              var price = prices.SitePrices[priceIndex].Price;
-              var date = moment.utc(prices.SitePrices[priceIndex].TransactionDateUtc);
-              var toConvert = price.toString().length-3;
-              var converted = price/Math.pow(10, toConvert);
-              if (siteIndex == 0) {
-                //console.log(date.format('LLL'))
-                //console.log(priceIndex, siteIndex, fuelIndex, site.S[0].S, site.S[0].fuel[0].TransactionDateUtc)
-              }
-              
-              site.S[siteIndex].fuel[fuelIndex].Price = converted;
-              site.S[siteIndex].fuel[fuelIndex].TransactionDateUtc = date.local().format('LLL');
-            //}
-            if (siteIndex == 0) {
-              //console.log(priceIndex, siteIndex, fuelIndex, site.S[0].S, site.S[0].fuel[0].TransactionDateUtc)
-              //console.log(site.S[siteIndex].fuel[fuelIndex].TransactionDateUtc)
-            }
-            //console.log(site.S[0].S, site.S[0].fuel[0].Price)
+            var price = prices.SitePrices[priceIndex].Price;
+            var date = moment.utc(prices.SitePrices[priceIndex].TransactionDateUtc);
+            var toConvert = price.toString().length-3;
+            var converted = price/Math.pow(10, toConvert);
+            
+            site.S[siteIndex].fuel[fuelIndex].Price = converted;
+            site.S[siteIndex].fuel[fuelIndex].TransactionDateUtc = date.local().format('LLL');
           }
         });
-        //console.log(prices.SitePrices[priceIndex].SiteId, site.S[siteIndex].S);
       }
     });
   });
-  
-  // Object.keys(site.S).forEach(function (siteIndex) {
-  //   site.S[siteIndex].fuel = JSON.stringify(site.S[siteIndex].fuel);
-  // });
-  //site.S[0].fuel[0].Price = 999
-  //console.log(site.S[1].fuel);
+
   data = GeoJSON.parse(site.S, {Point: ['Lat', 'Lng'], include: ['S', 'A', 'N', 'B', 'fuel']});
-  //console.log(data.features[0].properties.fuel);
 }
 
 /* GET home page. */
