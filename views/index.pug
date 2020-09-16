@@ -33,7 +33,6 @@ block content
       div(id="map" class="pad2 col-lg-9 map")
   script.
     const stations = !{jsStringify(data)};
-    const test = !{jsStringify(data)};
 
   //- Mapbox Script
   script.
@@ -46,7 +45,7 @@ block content
       center: [153.025, -27.469],
       zoom: 12
     });
-    console.log(stations);
+    
     map.on('load', function(e) {
       map.addSource("places", {
         "type": "geojson",
@@ -316,7 +315,7 @@ block content
       var popup = new mapboxgl.Popup({ closeOnClick: false })
         .setLngLat(currentFeature.geometry.coordinates)
         .setHTML(
-          '<popuph3>' + currentFeature.properties.N + '</popuph3>' + 
+          '<popuph3>' + currentFeature.properties.N + '</popuph3>' +
             '<popuph4>' +
             currentFeature.properties.A +
             '</popuph4>' +

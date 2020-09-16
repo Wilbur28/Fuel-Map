@@ -55,7 +55,6 @@ axios
     fuelID = fuelRequest.data;
     prices = pricesRequest.data;
     site = siteRequest.data;
-    //console.log(prices)
   })
 )
 .catch(errors => {
@@ -64,15 +63,18 @@ axios
 
 /* Sorts and Maps JSON Data */
 function sortData() {
+  /* Adds a Price and Date to Each Fuel Type */
   Object.keys(fuelID.Fuels).forEach(function (index) {
     fuelID.Fuels[index].Price = 999;
     fuelID.Fuels[index].TransactionDateUtc = "Unknown";
   });
 
+  /* Adds the Fuel Object to all Sites */
   Object.keys(site.S).forEach(function (index) {
     site.S[index].fuel = lodash.cloneDeep(fuelID.Fuels);
   });
 
+  /* Sorts the Price Data and Finds/Matching Store and Fuel */
   Object.keys(prices.SitePrices).forEach(function (priceIndex) {
     Object.keys(site.S).forEach(function (siteIndex) {
       if (prices.SitePrices[priceIndex].SiteId == site.S[siteIndex].S) {
@@ -91,6 +93,7 @@ function sortData() {
     });
   });
 
+  /* Converts JSON to GeoJSON Format */
   data = GeoJSON.parse(site.S, {Point: ['Lat', 'Lng'], include: ['S', 'A', 'N', 'B', 'fuel']});
 }
 
